@@ -5,7 +5,7 @@ import json
 
 st.set_page_config(page_title="Simulador de Estabilidad de Grúa", layout="centered")
 
-st.title("Simulador de FUERZAS EN GRUA")
+st.title("Simulador de Estabilidad de Grúa - Motor LICCON")
 st.write("Evaluación de reacciones en estabilizadores considerando rigidez armónica y pluma telescópica.")
 
 @st.cache_data
@@ -149,6 +149,9 @@ class AnalisisEstabilidadSolver:
 
         return resultados, (x_cg_sistema, y_cg_sistema)
 
+# ==========================================
+# INTERFAZ WEB CON STREAMLIT
+# ==========================================
 st.sidebar.header("Parámetros de Operación")
 masa_util = st.sidebar.number_input("Masa Útil (kg)", value=8000.0)
 radio = st.sidebar.number_input("Radio de Izaje (m)", value=20.1)
@@ -159,9 +162,23 @@ st.sidebar.subheader("Accesorios y Aparejos")
 masa_pasteca = st.sidebar.number_input("Masa Pasteca / Gancho (kg)", value=700.0)
 masa_eslingas = st.sidebar.number_input("Masa Eslingas y Grilletes (kg)", value=50.0)
 
-st.sidebar.subheader("Configuración de Grúa")
+st.sidebar.subheader("Configuración de Grúa y Contrapeso")
 masa_grua = st.sidebar.number_input("Masa Chasis Grúa (kg)", value=48000.0)
 masa_cw = st.sidebar.number_input("Masa Contrapeso (kg)", value=28200.0)
+d_cw_nominal = st.sidebar.number_input("Distancia CG Contrapeso (m)", value=4.1)
+
+st.sidebar.subheader("Ubicación de Estabilizadores (Pads)")
+p1_x = st.sidebar.number_input("Pad 1 - X (longitudinal)", value=2.8)
+p1_y = st.sidebar.number_input("Pad 1 - Y (transversal)", value=-3.5)
+
+p2_x = st.sidebar.number_input("Pad 2 - X (longitudinal)", value=-5.7)
+p2_y = st.sidebar.number_input("Pad 2 - Y (transversal)", value=-3.5)
+
+p3_x = st.sidebar.number_input("Pad 3 - X (longitudinal)", value=-5.5)
+p3_y = st.sidebar.number_input("Pad 3 - Y (transversal)", value=3.5)
+
+p4_x = st.sidebar.number_input("Pad 4 - X (longitudinal)", value=3.1)
+p4_y = st.sidebar.number_input("Pad 4 - Y (transversal)", value=3.5)
 
 if st.button("Ejecutar Análisis y Visualización"):
     if COEFICIENTES_FOURIER is None:
@@ -169,11 +186,13 @@ if st.button("Ejecutar Análisis y Visualización"):
         
     aparejo_op = Aparejo(masa_pasteca=masa_pasteca, masa_eslingas_grilletes=masa_eslingas)
     carga_op = Carga(masa_util=masa_util, radio=radio, theta_deg=angulo_giro, aparejo=aparejo_op)
-    grua_op = GruaBase(masa_grua=masa_grua, masa_cw=masa_cw, d_cw_nominal=4.1, giro_torreta_deg=angulo_giro)
+    grua_op = GruaBase(masa_grua=masa_grua, masa_cw=masa_cw, d_cw_nominal=d_cw_nominal, giro_torreta_deg=angulo_giro)
     
     apoyos_op = {
-        '1': (2.8, -3.5), '2': (-5.7, -3.5),
-        '3': (-5.5, 3.5), '4': (3.1, 3.5)
+        '1': (p1_x, p1_y), 
+        '2': (p2_x, p2_y),
+        '3': (p3_x, p3_y), 
+        '4': (p4_x, p4_y)
     }
     
     estabilizadores_op = ConfigurarEstabilizadores(apoyos_op)
@@ -217,8 +236,8 @@ if st.button("Ejecutar Análisis y Visualización"):
 
     ax.axhline(0, color='red', linewidth=1)
     ax.axvline(0, color='red', linewidth=1)
-    ax.set_xlim(-10, 10)
-    ax.set_ylim(-11, 19)
+    ax.set_xlim(-12, 12)
+    ax.set_ylim(-12, 20)
     ax.set_xlabel("Eje Transversal (Y) [m]")
     ax.set_ylabel("Eje Longitudinal (X) [m]")
     ax.set_title(f"Giro: {grua_op.giro_torreta_deg:.1f}° - L_pluma: {longitud_pluma}m", fontsize=10, fontweight='bold')
