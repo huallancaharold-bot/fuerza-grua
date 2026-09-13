@@ -132,14 +132,14 @@ class AnalisisEstabilidadSolver:
         rhs_vector = np.array([
             w_total,
             (m_L*x_L + m_G*x_G + m_CW*x_CW + m_pluma*x_pluma)*self.g,
-            (m_L*y_L + m_G*y_G + m_CW*y_G + m_pluma*y_pluma)*self.g
+            (m_L*y_L + m_G*y_G + m_CW*y_CW + m_pluma*y_pluma)*self.g
         ])
 
         A, B, C = np.linalg.solve(M_matrix, rhs_vector)
 
         sum_masas = m_L + m_G + m_CW + m_pluma
         x_cg_sistema = (m_L*x_L + m_G*x_G + m_CW*x_CW + m_pluma*x_pluma) / sum_masas
-        y_cg_sistema = (m_L*y_L + m_G*y_G + m_CW*y_GW + m_pluma*y_pluma) / sum_masas
+        y_cg_sistema = (m_L*y_L + m_G*y_G + m_CW*y_CW + m_pluma*y_pluma) / sum_masas
 
         resultados = {}
         for name, (xi, yi) in self.estabilizadores.pads.items():
