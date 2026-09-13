@@ -207,40 +207,50 @@ if st.button("Ejecutar Análisis y Visualización"):
         else:
             st.success(f"Pad {pad}: {fuerza:.2f} t")
 
-    st.subheader("Visualización del Modelo")
-    fig, ax = plt.subplots(figsize=(6, 6))
+st.subheader("Visualización del Modelo")
+    fig, ax = plt.subplots(figsize=(8, 8))
     
+    # 1. Chasis de la grúa
     chasis = plt.Rectangle((-1.0, -5.0), 2.0, 10.0, color='blue', alpha=0.20, label="Chasis Grúa")
     ax.add_patch(chasis)
 
+    # 2. Polígono de sustentación (Estabilizadores) - CORREGIDO
     p_orden = ['2', '3', '4', '1', '2']
     px = [apoyos_op[p][0] for p in p_orden]
     py = [apoyos_op[p][1] for p in p_orden]
     ax.plot(py, px, 'k--', label="Polígono de Sustentación")
 
+    # Plottear Pads individuales - CORREGIDO
     for name, (xi, yi) in apoyos_op.items():
         ax.scatter(yi, xi, color='red', s=120, zorder=5)
         ax.text(yi + 0.4, xi, f"{name}", fontsize=11, fontweight='bold', color='black')
 
-    ax.scatter([0], [0], color='black', marker='X', s=150, zorder=5, label="Centro de Giro")
+    # 3. Centro de giro
+    ax.scatter([0], [0], color='black', marker='X', s=150, zorder=5, label="Centro de Giro (0,0)")
+
+    # 4. Posición del Contrapeso (CW)
     x_cw, y_cw = grua_op.pos_cw
     cw_box = plt.Rectangle((y_cw - 0.75, x_cw - 0.5), 1.5, 1.0, color='purple', alpha=0.6, label="Contrapeso")
     ax.add_patch(cw_box)
 
+    # 5. Carga y Radio de Izaje - CORREGIDO
     x_L, y_L = carga_op.coordenadas
     ax.plot([0, y_L], [0, x_L], color='green', linewidth=2, label="Radio de Izaje")
     ax.scatter([y_L], [x_L], color='white', edgecolor='green', s=200, linewidth=2, zorder=6, label="Carga Total")
-    ax.scatter([y_cg], [x_cg], color='orange', marker='h', s=150, zorder=6, label="Centro de Masa")
+
+    # 6. Centro de masa del sistema - CORREGIDO
+    ax.scatter([y_cg], [x_cg], color='orange', marker='h', s=150, zorder=6, label="Centro de Masa (Sistema)")
 
     ax.axhline(0, color='red', linewidth=1)
     ax.axvline(0, color='red', linewidth=1)
-    ax.set_xlim(-12, 12)
-    ax.set_ylim(-12, 20)
+    
+    ax.set_xlim(-10, 10)
+    ax.set_ylim(-11, 19)
     ax.set_xlabel("Eje Transversal (Y) [m]")
     ax.set_ylabel("Eje Longitudinal (X) [m]")
-    ax.set_title(f"Giro: {grua_op.giro_torreta_deg:.1f}° - L_pluma: {longitud_pluma}m", fontsize=10, fontweight='bold')
+    ax.set_title(f"Modelo con Rigideces Armónicas (Giro: {grua_op.giro_torreta_deg:.1f}° - L: {longitud_pluma}m)", fontsize=12, fontweight='bold')
     ax.grid(True, linestyle=':', alpha=0.6)
-    ax.legend(loc='upper right', framealpha=0.9, fontsize=8)
+    ax.legend(loc='upper right', framealpha=0.9)
     
     plt.tight_layout()
     st.pyplot(fig)
