@@ -156,14 +156,14 @@ st.sidebar.header("Parámetros de Operación")
 masa_util = st.sidebar.number_input("Masa Útil (kg)", value=8000.0)
 radio = st.sidebar.number_input("Radio de Izaje (m)", value=20.1)
 angulo_giro = st.sidebar.number_input("Ángulo de Giro (°)", value=-57.0)
-
+longitud_pluma = st.sidebar.number_input("Longitud de Pluma (m)", value=30.1)
 
 st.sidebar.subheader("Accesorios y Aparejos")
 masa_pasteca = st.sidebar.number_input("Masa Pasteca / Gancho (kg)", value=700.0)
 masa_eslingas = st.sidebar.number_input("Masa Eslingas y Grilletes (kg)", value=50.0)
 
 st.sidebar.subheader("Configuración de Grúa y Contrapeso")
-longitud_pluma = st.sidebar.number_input("Longitud de Pluma (m)", value=30.1)
+
 masa_grua = st.sidebar.number_input("Masa Chasis Grúa (kg)", value=48000.0)
 masa_cw = st.sidebar.number_input("Masa Contrapeso (kg)", value=28200.0)
 d_cw_nominal = st.sidebar.number_input("Distancia CG Contrapeso (m)", value=4.1)
