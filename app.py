@@ -5,7 +5,7 @@ import json
 
 st.set_page_config(page_title="Simulador de Estabilidad de Grúa", layout="centered")
 
-st.title("Simulador de Estabilidad de Grúa - Motor LICCON")
+st.title("Simulador de FUERZAS EN GRUA")
 st.write("Evaluación de reacciones en estabilizadores considerando rigidez armónica y pluma telescópica.")
 
 @st.cache_data
@@ -70,32 +70,6 @@ class GruaBase:
         y = self.d_cw_nominal * np.sin(self.theta_torreta)
         return x, y
 
-class PlumaTelescopica:
-    def __init__(self, porcentajes_extension: list, longitudes_max_secciones: list, masas_base_secciones: list):
-        self.secciones = []
-        self.longitud_total = 0.0
-        self.masa_total_pluma = 0.0
-        self.momento_estatico_cg = 0.0
-
-        acumulador_longitud = 0.0
-        for i, (p_ext, l_max, m_base) in enumerate(zip(porcentajes_extension, longitudes_max_secciones, masas_base_secciones)):
-            l_efectiva = l_max * (p_ext / 100.0)
-            m_seccion = m_base * (0.3 + 0.7 * (p_ext / 100.0)) if i > 0 else m_base
-            cg_local = acumulador_longitud + (l_efectiva / 2.0)
-            
-            self.secciones.append({
-                'id': i + 1, 'longitud': l_efectiva, 'masa': m_seccion, 'cg_local': cg_local
-            })
-            
-            self.longitud_total += l_efectiva
-            self.masa_total_pluma += m_seccion
-            self.momento_estatico_cg += m_seccion * cg_local
-            acumulador_longitud += l_efectiva
-
-    @property
-    def hueso_cg_global_pluma(self):
-        return self.momento_estatico_cg / self.masa_total_pluma
-
 class ConfigurarEstabilizadores:
     def __init__(self, pads_dict: dict):
         self.pads = pads_dict
@@ -115,22 +89,22 @@ class ConfigurarEstabilizadores:
         return x_long, y_trans, k_vals, k_dict
 
 class AnalisisEstabilidadSolver:
-    def __init__(self, grua: GruaBase, carga: Carga, estabilizadores: ConfigurarEstabilizadores, pluma: PlumaTelescopica):
+    def __init__(self, grua: GruaBase, carga: Carga, estabilizadores: ConfigurarEstabilizadores, longitud_pluma: float = 22.6):
         self.grua = grua
         self.carga = carga
         self.estabilizadores = estabilizadores
-        self.pluma = pluma
         self.g = 9.81
+        self.longitud_pluma = longitud_pluma
+        
+        area_acero = 2.4 * 0.012
+        self.masa_pluma = area_acero * self.longitud_pluma * 7850.0 * 1.30
 
     def _estimar_efecto_pluma(self):
-        l_total = self.pluma.longitud_total
-        m_pluma = self.pluma.masa_total_pluma
-        cg_pluma_l = self.pluma.hueso_cg_global_pluma
-
-        ratio_cos = min(max(self.carga.radio / l_total, 0.01), 0.99)
+        ratio_cos = min(max(self.carga.radio / self.longitud_pluma, 0.01), 0.99)
         angulo_pluma = np.arccos(ratio_cos)
-        radio_cg_proyectado = cg_pluma_l * np.cos(angulo_pluma)
-        return m_pluma, radio_cg_proyectado
+        r_cg_pluma_global = (self.longitud_pluma / 2.0)
+        radio_cg_proyectado = r_cg_pluma_global * np.cos(angulo_pluma)
+        return self.masa_pluma, radio_cg_proyectado
 
     def resolver_reacciones(self):
         x_L, y_L = self.carga.coordenadas
@@ -158,14 +132,14 @@ class AnalisisEstabilidadSolver:
         rhs_vector = np.array([
             w_total,
             (m_L*x_L + m_G*x_G + m_CW*x_CW + m_pluma*x_pluma)*self.g,
-            (m_L*y_L + m_G*y_G + m_CW*y_CW + m_pluma*y_pluma)*self.g
+            (m_L*y_L + m_G*y_G + m_CW*y_G + m_pluma*y_pluma)*self.g
         ])
 
         A, B, C = np.linalg.solve(M_matrix, rhs_vector)
 
         sum_masas = m_L + m_G + m_CW + m_pluma
         x_cg_sistema = (m_L*x_L + m_G*x_G + m_CW*x_CW + m_pluma*x_pluma) / sum_masas
-        y_cg_sistema = (m_L*y_L + m_G*y_G + m_CW*y_CW + m_pluma*y_pluma) / sum_masas
+        y_cg_sistema = (m_L*y_L + m_G*y_G + m_CW*y_G + m_pluma*y_pluma) / sum_masas
 
         resultados = {}
         for name, (xi, yi) in self.estabilizadores.pads.items():
@@ -178,25 +152,33 @@ class AnalisisEstabilidadSolver:
 st.sidebar.header("Parámetros de Operación")
 masa_util = st.sidebar.number_input("Masa Útil (kg)", value=8000.0)
 radio = st.sidebar.number_input("Radio de Izaje (m)", value=20.1)
-angulo_giro = st.sidebar.number_input("Ángulo de Giro / Posición (°)", value=-57.0)
+angulo_giro = st.sidebar.number_input("Ángulo de Giro (°)", value=-57.0)
+longitud_pluma = st.sidebar.number_input("Longitud de Pluma (m)", value=30.1)
+
+st.sidebar.subheader("Accesorios y Aparejos")
+masa_pasteca = st.sidebar.number_input("Masa Pasteca / Gancho (kg)", value=700.0)
+masa_eslingas = st.sidebar.number_input("Masa Eslingas y Grilletes (kg)", value=50.0)
+
+st.sidebar.subheader("Configuración de Grúa")
+masa_grua = st.sidebar.number_input("Masa Chasis Grúa (kg)", value=48000.0)
+masa_cw = st.sidebar.number_input("Masa Contrapeso (kg)", value=28200.0)
 
 if st.button("Ejecutar Análisis y Visualización"):
     if COEFICIENTES_FOURIER is None:
         st.stop()
         
-    aparejo_op = Aparejo(masa_pasteca=700.0, masa_eslingas_grilletes=50.0)
+    aparejo_op = Aparejo(masa_pasteca=masa_pasteca, masa_eslingas_grilletes=masa_eslingas)
     carga_op = Carga(masa_util=masa_util, radio=radio, theta_deg=angulo_giro, aparejo=aparejo_op)
-    grua_op = GruaBase(masa_grua=48000.0, masa_cw=28200.0, d_cw_nominal=4.1, giro_torreta_deg=angulo_giro)
+    grua_op = GruaBase(masa_grua=masa_grua, masa_cw=masa_cw, d_cw_nominal=4.1, giro_torreta_deg=angulo_giro)
     
-    porcentajes_liccon = [0.0, 46.0, 46.0, 46.0, 46.0, 46.0]
-    longitudes_maximas = [6.5, 5.5, 5.5, 5.5, 5.5, 5.5]
-    masas_secciones_base = [1500.0, 900.0, 800.0, 700.0, 600.0, 500.0]
-
-    pluma_op = PlumaTelescopica(porcentajes_liccon, longitudes_maximas, masas_secciones_base)
-    apoyos_op = {'1': (2.8, -3.5), '2': (-5.7, -3.5), '3': (-5.5, 3.5), '4': (3.1, 3.5)}
+    apoyos_op = {
+        '1': (2.8, -3.5), '2': (-5.7, -3.5),
+        '3': (-5.5, 3.5), '4': (3.1, 3.5)
+    }
+    
     estabilizadores_op = ConfigurarEstabilizadores(apoyos_op)
+    solver_op = AnalisisEstabilidadSolver(grua=grua_op, carga=carga_op, estabilizadores=estabilizadores_op, longitud_pluma=longitud_pluma)
     
-    solver_op = AnalisisEstabilidadSolver(grua=grua_op, carga=carga_op, estabilizadores=estabilizadores_op, pluma=pluma_op)
     reacciones, (x_cg, y_cg) = solver_op.resolver_reacciones()
     
     st.subheader("Resultados Numéricos")
@@ -239,7 +221,7 @@ if st.button("Ejecutar Análisis y Visualización"):
     ax.set_ylim(-11, 19)
     ax.set_xlabel("Eje Transversal (Y) [m]")
     ax.set_ylabel("Eje Longitudinal (X) [m]")
-    ax.set_title(f"Giro: {grua_op.giro_torreta_deg:.1f}° - L_pluma: {pluma_op.longitud_total:.1f}m", fontsize=10, fontweight='bold')
+    ax.set_title(f"Giro: {grua_op.giro_torreta_deg:.1f}° - L_pluma: {longitud_pluma}m", fontsize=10, fontweight='bold')
     ax.grid(True, linestyle=':', alpha=0.6)
     ax.legend(loc='upper right', framealpha=0.9, fontsize=8)
     
